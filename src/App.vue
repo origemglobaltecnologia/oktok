@@ -2,17 +2,22 @@
 import { ref, onMounted } from 'vue';
 
 // =========================================================
-// VARIÁVEIS DE CONFIGURAÇÃO (URI CORRIGIDA: /users)
+// VARIÁVEIS DE CONFIGURAÇÃO REST
 // =========================================================
-// Mantendo a URI de listagem de usuários na porta 8080
 const API_URL = 'http://localhost:8080/users'; 
-const fetchStatus = ref('Aguardando busca...');
+const fetchStatus = ref('Aguardando busca de contatos...');
 const users = ref([]);
+const isUsersLoading = ref(true);
+
+// Mocks de ID mantidos, mas a lista de contatos será dinâmica
+const MY_USER_ID = ref(1); 
+const RECIPIENT_ID = ref(2); 
 
 // =========================================================
 // FUNÇÃO DE BUSCA (FETCH)
 // =========================================================
 const fetchUsers = async () => {
+    isUsersLoading.value = true;
     fetchStatus.value = `Buscando usuários em ${API_URL}...`;
     users.value = []; 
 
@@ -20,7 +25,7 @@ const fetchUsers = async () => {
         const response = await fetch(API_URL);
 
         if (!response.ok) {
-            fetchStatus.value = `ERRO HTTP: ${response.status}. Servidor 8080.`;
+            fetchStatus.value = `ERRO HTTP: ${response.status}. O servidor Spring está rodando?`;
             console.error("Erro da API (Status não-OK):", await response.text());
             return;
         }
@@ -29,7 +34,7 @@ const fetchUsers = async () => {
         
         if (Array.isArray(data)) {
             users.value = data;
-            fetchStatus.value = `Sucesso! ${data.length} usuários carregados.`;
+            fetchStatus.value = `Sucesso REST! ${data.length} contatos carregados.`;
         } else {
             fetchStatus.value = `Sucesso (200 OK), mas o retorno não é uma lista válida.`;
         }
@@ -38,6 +43,8 @@ const fetchUsers = async () => {
         // Erro de rede (net::ERR_CONNECTION_REFUSED) ou CORS
         fetchStatus.value = 'ERRO DE CONEXÃO: Servidor 8080 offline ou CORS bloqueado. (F12)';
         console.error('Erro de Fetch (Rede/CORS):', error);
+    } finally {
+        isUsersLoading.value = false;
     }
 };
 
@@ -50,7 +57,7 @@ onMounted(fetchUsers);
 <template>
   <div class="ht-app-container">
     <header class="app-header">
-      <h1 class="logo">HT MESSAGES</h1>
+      <h1 class="logo">HT PTT Messenger</h1>
       <div :class="['status-indicator', {'status-success': users.length > 0, 'status-error': fetchStatus.startsWith('ERRO')}]">
         {{ users.length > 0 ? 'ONLINE' : fetchStatus.startsWith('ERRO') ? 'ERRO' : 'BUSCANDO...' }}
       </div>
@@ -59,33 +66,47 @@ onMounted(fetchUsers);
     <main class="main-content">
       
       <div class="status-box" :class="{'status-box-error': fetchStatus.startsWith('ERRO')}">
-        <p v-if="users.length > 0" class="status-message">
-            Conexão REST OK! {{ users.length }} Contatos Carregados.
+        <p class="status-message">
+            <strong>Usuário Logado:</strong> {{ users.find(u => u.id === MY_USER_ID)?.username || `ID ${MY_USER_ID}` }}
         </p>
-        <p v-else class="status-message-error">
-            {{ fetchStatus }}
+        <p class="status-message">
+            <strong>Destinatário (1-1):</strong> {{ users.find(u => u.id === RECIPIENT_ID)?.username || `ID ${RECIPIENT_ID}` }}
         </p>
+        <p class="status-message-current">{{ fetchStatus }}</p>
+      </div>
+
+      <div class="ptt-container">
+        <button 
+            disabled
+            class="ptt-button"
+        >
+            <span>SEGURE PARA FALAR</span>
+        </button>
       </div>
 
       <div class="user-list-container">
-        <h3 class="list-title">Contatos Disponíveis ({{ users.length }})</h3>
+        <h3 class="list-title">Contatos REST ({{ users.length }})</h3>
         
-        <div v-if="users.length > 0" class="user-list">
-          <ul class="user-ul">
+        <div v-if="isUsersLoading" class="loading-list">
+             <p>Carregando contatos...</p>
+        </div>
+        
+        <ul v-else-if="users.length > 0" class="user-ul">
             <li v-for="user in users" :key="user.id" class="user-item">
-              <span class="user-name">{{ user.username || user.name || 'Usuário Desconhecido' }}</span>
+              <span class="user-name" :class="{'my-user': user.id === MY_USER_ID, 'recipient-user': user.id === RECIPIENT_ID}">
+                {{ user.username || 'Usuário Desconhecido' }}
+              </span>
               <span class="user-status">ID: {{ user.id }}</span>
             </li>
-          </ul>
-        </div>
+        </ul>
+        
         <div v-else class="empty-list">
-            <p>Nenhum contato encontrado ou erro de conexão. Tente novamente.</p>
+             <p>Nenhum contato encontrado ou erro de conexão. Verifique o status.</p>
+             <button @click="fetchUsers" class="reload-button-inline">
+                 Recarregar
+             </button>
         </div>
       </div>
-      
-      <button @click="fetchUsers" class="reload-button">
-          Recarregar Contatos
-      </button>
       
     </main>
     
@@ -98,14 +119,15 @@ onMounted(fetchUsers);
 <style scoped>
 /* Variáveis de Cores AZUIS/OKTOK */
 :root {
-    --color-primary-blue: #007bff; /* Azul vibrante (Primário) */
-    --color-secondary-dark: #1e3a8a; /* Azul escuro (Cabeçalho/Rodapé) */
-    --color-success: #10b981; /* Verde (Sucesso) */
-    --color-danger: #ef4444; /* Vermelho (Erro) */
+    --color-primary-blue: #007bff;
+    --color-secondary-dark: #1e3a8a;
+    --color-success: #10b981;
+    --color-danger: #ef4444;
     --color-background: #f0f2f5;
     --color-card: #ffffff;
     --color-text-light: #ffffff;
     --color-text-dark: #333333;
+    --color-warning: #f59e0b; /* Laranja para Gravação */
 }
 
 .ht-app-container {
@@ -115,7 +137,7 @@ onMounted(fetchUsers);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--color-background);
     color: var(--color-text-dark);
-    max-width: 400px; /* Largura típica de aplicativo móvel */
+    max-width: 400px;
     margin: 0 auto;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
     border-radius: 12px;
@@ -144,16 +166,16 @@ onMounted(fetchUsers);
     font-size: 0.75em;
     font-weight: bold;
     text-transform: uppercase;
+    background-color: #999; /* Cor base para carregando/desconectado */
+    color: var(--color-text-light);
 }
 
 .status-success {
     background-color: var(--color-success);
-    color: var(--color-text-light);
 }
 
 .status-error {
     background-color: var(--color-danger);
-    color: var(--color-text-light);
 }
 
 .main-content {
@@ -164,38 +186,60 @@ onMounted(fetchUsers);
     gap: 15px;
 }
 
-/* --- Status Box --- */
 .status-box {
     background-color: #e6f0ff; 
     border-left: 5px solid var(--color-primary-blue);
     padding: 10px 15px;
     border-radius: 5px;
 }
-
 .status-box-error {
     background-color: #ffe6e6; 
     border-left: 5px solid var(--color-danger);
 }
-
-.status-message, .status-message-error {
+.status-message {
     margin: 0;
     font-size: 0.9em;
 }
-.status-message-error {
-    color: var(--color-danger);
+.status-message-current {
+    margin-top: 5px;
+    font-size: 0.9em;
     font-weight: bold;
+    color: var(--color-secondary-dark);
+    padding-top: 5px;
+    border-top: 1px dashed #c0d8ff;
 }
 
+.ptt-container {
+    text-align: center;
+    padding: 10px 0;
+}
 
-/* --- Lista de Usuários --- */
+.ptt-button {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background-color: #999; 
+    color: white;
+    font-size: 1.1em;
+    font-weight: 700;
+    border: none;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    cursor: not-allowed;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 10px auto;
+    text-transform: uppercase;
+}
+
 .user-list-container {
     background-color: var(--color-card);
     border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    flex-grow: 1;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     padding: 15px;
+    flex-grow: 1; 
 }
-
 .list-title {
     font-size: 1.1em;
     font-weight: 600;
@@ -204,31 +248,34 @@ onMounted(fetchUsers);
     padding-bottom: 10px;
     border-bottom: 1px solid #eee;
 }
-
 .user-ul {
     list-style: none;
     padding: 0;
     margin: 0;
 }
-
 .user-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
+    padding: 8px 0;
     border-bottom: 1px solid #f0f0f0;
 }
-
 .user-item:last-child {
     border-bottom: none;
 }
-
 .user-name {
     font-weight: 500;
     color: var(--color-text-dark);
     font-size: 1em;
 }
-
+.my-user {
+    font-weight: 700;
+    color: var(--color-primary-blue);
+}
+.recipient-user {
+    font-weight: 700;
+    color: var(--color-warning);
+}
 .user-status {
     font-size: 0.8em;
     color: #6c757d;
@@ -237,27 +284,25 @@ onMounted(fetchUsers);
     border-radius: 15px;
 }
 
-.empty-list {
+.loading-list, .empty-list {
     text-align: center;
-    padding: 40px 0;
+    padding: 20px 0;
     color: #999;
+    font-size: 0.9em;
 }
 
-/* --- Botão Recarregar --- */
-.reload-button {
-    width: 100%;
-    padding: 10px;
-    background-color: var(--color-primary-blue);
-    color: var(--color-text-light);
-    border: none;
-    border-radius: 20px;
-    font-weight: 600;
+.reload-button-inline {
+    background: none;
+    border: 1px solid var(--color-primary-blue);
+    color: var(--color-primary-blue);
+    padding: 5px 10px;
+    border-radius: 5px;
+    margin-top: 10px;
     cursor: pointer;
-    transition: background-color 0.2s;
 }
 
-.reload-button:hover {
-    background-color: #0056b3;
+.reload-button-inline:hover {
+    background-color: #e6f0ff;
 }
 
 .app-footer {
