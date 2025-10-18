@@ -40,7 +40,6 @@ const fetchUsers = async () => {
         }
 
     } catch (error) {
-        // Erro de rede (net::ERR_CONNECTION_REFUSED) ou CORS
         fetchStatus.value = 'ERRO DE CONEXÃO: Servidor 8080 offline ou CORS bloqueado. (F12)';
         console.error('Erro de Fetch (Rede/CORS):', error);
     } finally {
@@ -49,9 +48,63 @@ const fetchUsers = async () => {
 };
 
 // =========================================================
-// GANCHO DE INICIALIZAÇÃO
+// ÁUDIO (PTT) - Gravação local via microfone
 // =========================================================
-onMounted(fetchUsers);
+const mediaRecorder = ref(null);
+const audioChunks = ref([]);
+const isRecording = ref(false);
+const hasMicPermission = ref(false);
+
+onMounted(async () => {
+    // Inicializa o fetch dos usuários
+    fetchUsers();
+
+    // Solicita permissão ao microfone
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        hasMicPermission.value = true;
+        mediaRecorder.value = new MediaRecorder(stream);
+
+        // Quando receber chunks de áudio
+        mediaRecorder.value.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.value.push(event.data);
+            }
+        };
+
+        // Quando parar, cria um Blob e toca o áudio gravado
+        mediaRecorder.value.onstop = () => {
+            const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            console.log("🎙️ Áudio gravado:", audioBlob);
+            audio.play();
+            audioChunks.value = [];
+        };
+    } catch (err) {
+        console.error("🚫 Erro ao acessar microfone:", err);
+        hasMicPermission.value = false;
+    }
+});
+
+// Inicia a gravação
+const startRecording = () => {
+    if (mediaRecorder.value && hasMicPermission.value) {
+        audioChunks.value = [];
+        mediaRecorder.value.start();
+        isRecording.value = true;
+        console.log("🔴 Gravando...");
+    }
+};
+
+// Para a gravação
+const stopRecording = () => {
+    if (mediaRecorder.value && isRecording.value) {
+        mediaRecorder.value.stop();
+        isRecording.value = false;
+        console.log("🟢 Gravação finalizada.");
+    }
+};
 </script>
 
 <template>
@@ -77,11 +130,20 @@ onMounted(fetchUsers);
 
       <div class="ptt-container">
         <button 
-            disabled
             class="ptt-button"
+            :class="{ 'ptt-recording': isRecording }"
+            @mousedown="startRecording"
+            @mouseup="stopRecording"
+            @touchstart.prevent="startRecording"
+            @touchend.prevent="stopRecording"
+            :disabled="!hasMicPermission"
         >
-            <span>SEGURE PARA FALAR</span>
+            <span>{{ isRecording ? 'GRAVANDO...' : 'SEGURE PARA FALAR' }}</span>
         </button>
+
+        <p v-if="!hasMicPermission" style="color:red; font-size:0.8em; margin-top:5px;">
+          ⚠️ Permita o acesso ao microfone no navegador.
+        </p>
       </div>
 
       <div class="user-list-container">
@@ -117,7 +179,6 @@ onMounted(fetchUsers);
 </template>
 
 <style scoped>
-/* Variáveis de Cores AZUIS/OKTOK */
 :root {
     --color-primary-blue: #007bff;
     --color-secondary-dark: #1e3a8a;
@@ -127,7 +188,7 @@ onMounted(fetchUsers);
     --color-card: #ffffff;
     --color-text-light: #ffffff;
     --color-text-dark: #333333;
-    --color-warning: #f59e0b; /* Laranja para Gravação */
+    --color-warning: #f59e0b;
 }
 
 .ht-app-container {
@@ -166,7 +227,7 @@ onMounted(fetchUsers);
     font-size: 0.75em;
     font-weight: bold;
     text-transform: uppercase;
-    background-color: #999; /* Cor base para carregando/desconectado */
+    background-color: #999;
     color: var(--color-text-light);
 }
 
@@ -231,6 +292,12 @@ onMounted(fetchUsers);
     align-items: center;
     margin: 0 auto 10px auto;
     text-transform: uppercase;
+}
+
+.ptt-button.ptt-recording {
+    background-color: var(--color-warning);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+    cursor: grabbing;
 }
 
 .user-list-container {
@@ -313,4 +380,3 @@ onMounted(fetchUsers);
     color: #6c757d;
 }
 </style>
-
