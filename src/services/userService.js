@@ -7,7 +7,7 @@ const API_URL = 'http://localhost:8080/users';
 
 /**
  * Busca a lista de usuários da API REST.
- * * @returns {Promise<Array|null>} Uma promessa que resolve para a lista de usuários ou
+ * @returns {Promise<Array|null>} Uma promessa que resolve para a lista de usuários ou
  * lança um erro com a mensagem para o App.vue tratar.
  */
 export const fetchUsers = async () => {
@@ -26,7 +26,8 @@ export const fetchUsers = async () => {
             return data; // Retorna a lista de usuários em caso de sucesso
         } else {
             console.error("Sucesso (200 OK), mas o retorno não é uma lista válida.");
-            return []; // Retorna lista vazia se o formato estiver errado
+            // Lança um erro estrutural para o App.vue
+            throw new Error("Sucesso (200 OK), mas o formato de dados retornado não é uma lista válida.");
         }
 
     } catch (error) {
@@ -34,7 +35,7 @@ export const fetchUsers = async () => {
         if (error.name === 'TypeError' || error.message.includes('Failed to fetch')) {
             throw new Error('ERRO DE CONEXÃO: Servidor 8080 offline ou CORS bloqueado. (F12)');
         }
-        throw error; // Relança outros erros
+        throw error; // Relança outros erros (como o ERRO HTTP)
     }
 };
 

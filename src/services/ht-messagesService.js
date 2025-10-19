@@ -1,62 +1,79 @@
-// ht-messagesService.js
+// src/services/ht-messagesService.js
+import { ref } from 'vue';
 
+// =========================================================
+// VARIÁVEIS DE ESTADO DO ÁUDIO (Expostas)
+// =========================================================
+export const mediaRecorder = ref(null);
+const audioChunks = [];
+export const isRecording = ref(false);
+export const hasMicPermission = ref(false);
+
+// =========================================================
+// FUNÇÃO DE INICIALIZAÇÃO E PERMISSÃO DO MICROFONE
+// =========================================================
 /**
- * Simula o recebimento de mensagens.
- * @returns {Promise<Array<Object>>} Uma promessa que resolve para um array de mensagens.
+ * Solicita permissão ao microfone e inicializa o MediaRecorder.
  */
-export const fetchMessages = async () => {
-    // Simula um atraso de rede
-    await new Promise(resolve => setTimeout(resolve, 500)); 
+export const initializeAudioRecording = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        hasMicPermission.value = true;
+        mediaRecorder.value = new MediaRecorder(stream);
 
-    return [
-        { 
-            id: 101, 
-            senderId: 2, // Destinatário (recebida por MY_USER_ID=1)
-            recipientId: 1, 
-            type: 'audio', 
-            content: 'Audio Blob Simulado - 1 (3s)', 
-            timestamp: new Date(Date.now() - 300000).toLocaleTimeString() 
-        },
-        { 
-            id: 102, 
-            senderId: 1, // Eu (enviada por MY_USER_ID=1)
-            recipientId: 2, 
-            type: 'audio', 
-            content: 'Audio Blob Simulado - 2 (5s)', 
-            timestamp: new Date(Date.now() - 120000).toLocaleTimeString() 
-        },
-        { 
-            id: 103, 
-            senderId: 2, 
-            recipientId: 1, 
-            type: 'text', 
-            content: 'Olá, me ouve? Aqui só aparecem as mensagens estáticas.', 
-            timestamp: new Date(Date.now() - 60000).toLocaleTimeString() 
-        },
-    ];
-};
+        mediaRecorder.value.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
 
-/**
- * Simula o playback de uma mensagem PTT.
- * @param {Object} message O objeto da mensagem a ser "tocada".
- */
-export const playPttMessage = (message) => {
-    if (message.type === 'audio') {
-        // Em uma aplicação real, você usaria o 'content' (se fosse um Blob real)
-        // ou buscar o áudio do servidor para tocar.
-        console.log(`▶️ Mensagem PTT ID ${message.id} (de ID ${message.senderId}) está sendo tocada.`);
+        mediaRecorder.value.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            // Você pode retornar o Blob para o App.vue ou fazer o upload aqui.
+            console.log("🎙️ Áudio gravado (Playback local):", audioBlob);
+            
+            // Exemplo: Playback local imediato
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            audio.play();
+
+            audioChunks.length = 0; // Limpa o array
+        };
         
-        // Simulação de playback
-        const duration = message.content.includes('(3s)') ? 3000 : 5000;
-        
-        // Você pode adicionar uma simulação de atraso aqui
-        setTimeout(() => {
-            console.log(`⏹️ Playback da Mensagem ID ${message.id} finalizado.`);
-        }, duration);
+        return true; // Sucesso na inicialização
 
-    } else {
-        console.warn(`Mensagem ID ${message.id} não é de áudio. Ignorando playback.`);
+    } catch (err) {
+        console.error("🚫 Erro ao acessar microfone:", err);
+        hasMicPermission.value = false;
+        return false; // Falha na inicialização
     }
 };
 
+
+// =========================================================
+// FUNÇÕES DE CONTROLE DE GRAVAÇÃO (Expostas)
+// =========================================================
+
+/**
+ * Inicia a gravação de áudio.
+ */
+export const startRecording = () => {
+    if (mediaRecorder.value && hasMicPermission.value) {
+        audioChunks.length = 0; // Garante que o array está limpo
+        mediaRecorder.value.start();
+        isRecording.value = true;
+        console.log("🔴 Gravando...");
+    }
+};
+
+/**
+ * Para a gravação de áudio.
+ */
+export const stopRecording = () => {
+    if (mediaRecorder.value && isRecording.value) {
+        mediaRecorder.value.stop();
+        isRecording.value = false;
+        console.log("🟢 Gravação finalizada.");
+    }
+};
 

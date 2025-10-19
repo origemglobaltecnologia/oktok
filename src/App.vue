@@ -2,12 +2,21 @@
 import { ref, onMounted } from 'vue';
 
 // =========================================================
-// IMPORTAÇÃO DO SERVIÇO DE USUÁRIOS
+// IMPORTAÇÃO DOS SERVIÇOS
 // =========================================================
-import { fetchUsers } from './services/userService'; // Importado
+import { fetchUsers } from './services/userService'; // Lógica REST de Usuários
+
+// Lógica de PTT (Gravação de Áudio)
+import { 
+    isRecording, 
+    hasMicPermission, 
+    initializeAudioRecording, 
+    startRecording, 
+    stopRecording 
+} from './services/ht-messagesService'; 
 
 // =========================================================
-// VARIÁVEIS DE CONFIGURAÇÃO E ESTADO
+// VARIÁVEIS DE CONFIGURAÇÃO E ESTADO (MÍNIMO)
 // =========================================================
 const fetchStatus = ref('Aguardando busca de contatos...');
 const users = ref([]);
@@ -17,7 +26,7 @@ const MY_USER_ID = ref(1);
 const RECIPIENT_ID = ref(2); 
 
 // =========================================================
-// FUNÇÃO DE BUSCA (FETCH) - UTILIZANDO O SERVIÇO
+// FUNÇÃO DE BUSCA DE USUÁRIOS
 // =========================================================
 const loadUsers = async () => { 
     isUsersLoading.value = true;
@@ -25,7 +34,7 @@ const loadUsers = async () => {
     users.value = []; 
 
     try {
-        const data = await fetchUsers(); 
+        const data = await fetchUsers(); // Chama o serviço
         
         users.value = data;
         fetchStatus.value = `Sucesso REST! ${data.length} contatos carregados.`;
@@ -39,60 +48,15 @@ const loadUsers = async () => {
 };
 
 // =========================================================
-// ÁUDIO (PTT) - Gravação local via microfone
+// LIFECYCLE
 // =========================================================
-const mediaRecorder = ref(null);
-const audioChunks = ref([]);
-const isRecording = ref(false);
-const hasMicPermission = ref(false);
-
 onMounted(async () => {
     loadUsers(); 
-
-    // Solicita permissão ao microfone
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        hasMicPermission.value = true;
-        mediaRecorder.value = new MediaRecorder(stream);
-
-        mediaRecorder.value.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-                audioChunks.value.push(event.data);
-            }
-        };
-
-        mediaRecorder.value.onstop = () => {
-            const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const audio = new Audio(audioUrl);
-            console.log("🎙️ Áudio gravado (Playback local):", audioBlob);
-            audio.play();
-            audioChunks.value = [];
-        };
-    } catch (err) {
-        console.error("🚫 Erro ao acessar microfone:", err);
-        hasMicPermission.value = false;
-    }
+    
+    // Inicializa a gravação de áudio (Pede permissão, configura)
+    initializeAudioRecording(); 
+    // As variáveis isRecording e hasMicPermission são reativas e importadas!
 });
-
-// Inicia a gravação
-const startRecording = () => {
-    if (mediaRecorder.value && hasMicPermission.value) {
-        audioChunks.value = [];
-        mediaRecorder.value.start();
-        isRecording.value = true;
-        console.log("🔴 Gravando...");
-    }
-};
-
-// Para a gravação
-const stopRecording = () => {
-    if (mediaRecorder.value && isRecording.value) {
-        mediaRecorder.value.stop();
-        isRecording.value = false;
-        console.log("🟢 Gravação finalizada.");
-    }
-};
 </script>
 
 <template>
