@@ -2,9 +2,12 @@
 import { ref, onMounted } from 'vue';
 
 // =========================================================
-// IMPORTAÇÃO DO SERVIÇO DE USUÁRIOS
+// IMPORTAÇÃO DOS SERVIÇOS
 // =========================================================
-import { fetchUsers } from './services/userService'; // Importado
+import { fetchUsers } from './services/userService'; 
+// CORRIGIDO: Caminho ajustado para a subpasta 'services'
+// MANTEMOS A IMPORTAÇÃO, MESMO QUE NÃO VISUALIZADA NO TEMPLATE
+import { fetchMessages, playPttMessage } from './services/ht-messagesService'; 
 
 // =========================================================
 // VARIÁVEIS DE CONFIGURAÇÃO E ESTADO
@@ -13,30 +16,51 @@ const fetchStatus = ref('Aguardando busca de contatos...');
 const users = ref([]);
 const isUsersLoading = ref(true);
 
+// MANTIDO: Variáveis de estado das mensagens (para que a lógica funcione)
+const messages = ref([]); 
+const isMessagesLoading = ref(true); 
+
 const MY_USER_ID = ref(1); 
 const RECIPIENT_ID = ref(2); 
 
 // =========================================================
-// FUNÇÃO DE BUSCA (FETCH) - UTILIZANDO O SERVIÇO
+// FUNÇÃO DE BUSCA (FETCH) - USUÁRIOS
 // =========================================================
-const loadUsers = async () => { // Renomeada para melhor clareza
+const loadUsers = async () => { 
     isUsersLoading.value = true;
     fetchStatus.value = `Buscando usuários...`;
     users.value = []; 
 
     try {
-        // CHAMA A FUNÇÃO DO SERVIÇO EXTERNO
         const data = await fetchUsers(); 
         
         users.value = data;
         fetchStatus.value = `Sucesso REST! ${data.length} contatos carregados.`;
 
     } catch (error) {
-        // O App.vue trata a mensagem de erro da camada de serviço
         fetchStatus.value = error.message; 
-        console.error('Erro de Fetch (Tratado no App.vue):', error.message);
+        console.error('Erro de Fetch (Usuários):', error.message);
     } finally {
         isUsersLoading.value = false;
+    }
+};
+
+// =========================================================
+// FUNÇÃO DE BUSCA (FETCH) - MENSAGENS (MANTIDA)
+// =========================================================
+const loadMessages = async () => {
+    isMessagesLoading.value = true;
+
+    try {
+        const data = await fetchMessages(); 
+        messages.value = data.reverse(); 
+        // O status principal ainda foca nos contatos, mas o log confirma o fetch das mensagens
+        console.log(`💬 ${data.length} mensagens carregadas em background.`); 
+
+    } catch (error) {
+        console.error('Erro ao carregar mensagens:', error.message);
+    } finally {
+        isMessagesLoading.value = false;
     }
 };
 
@@ -49,8 +73,9 @@ const isRecording = ref(false);
 const hasMicPermission = ref(false);
 
 onMounted(async () => {
-    // Inicializa o fetch dos usuários
-    loadUsers(); // Chama a nova função loadUsers
+    // Inicializa o fetch dos usuários e mensagens
+    loadUsers(); 
+    loadMessages(); 
 
     // Solicita permissão ao microfone
     try {
@@ -172,7 +197,7 @@ const stopRecording = () => {
 </template>
 
 <style scoped>
-/* O CSS permanece inalterado */
+/* ESTILOS ORIGINAIS (SEM OS NOVOS ESTILOS DE CHAT) */
 :root {
     --color-primary-blue: #007bff;
     --color-secondary-dark: #1e3a8a;
