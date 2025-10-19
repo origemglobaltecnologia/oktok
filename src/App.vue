@@ -2,12 +2,9 @@
 import { ref, onMounted } from 'vue';
 
 // =========================================================
-// IMPORTAÇÃO DOS SERVIÇOS
+// IMPORTAÇÃO DO SERVIÇO DE USUÁRIOS
 // =========================================================
-import { fetchUsers } from './services/userService'; 
-// CORRIGIDO: Caminho ajustado para a subpasta 'services'
-// MANTEMOS A IMPORTAÇÃO, MESMO QUE NÃO VISUALIZADA NO TEMPLATE
-import { fetchMessages, playPttMessage } from './services/ht-messagesService'; 
+import { fetchUsers } from './services/userService'; // Importado
 
 // =========================================================
 // VARIÁVEIS DE CONFIGURAÇÃO E ESTADO
@@ -16,51 +13,30 @@ const fetchStatus = ref('Aguardando busca de contatos...');
 const users = ref([]);
 const isUsersLoading = ref(true);
 
-// MANTIDO: Variáveis de estado das mensagens (para que a lógica funcione)
-const messages = ref([]); 
-const isMessagesLoading = ref(true); 
-
 const MY_USER_ID = ref(1); 
 const RECIPIENT_ID = ref(2); 
 
 // =========================================================
-// FUNÇÃO DE BUSCA (FETCH) - USUÁRIOS
+// FUNÇÃO DE BUSCA (FETCH) - UTILIZANDO O SERVIÇO
 // =========================================================
-const loadUsers = async () => { 
+const loadUsers = async () => { // Renomeada para melhor clareza
     isUsersLoading.value = true;
     fetchStatus.value = `Buscando usuários...`;
     users.value = []; 
 
     try {
+        // CHAMA A FUNÇÃO DO SERVIÇO EXTERNO
         const data = await fetchUsers(); 
         
         users.value = data;
         fetchStatus.value = `Sucesso REST! ${data.length} contatos carregados.`;
 
     } catch (error) {
+        // O App.vue trata a mensagem de erro da camada de serviço
         fetchStatus.value = error.message; 
-        console.error('Erro de Fetch (Usuários):', error.message);
+        console.error('Erro de Fetch (Tratado no App.vue):', error.message);
     } finally {
         isUsersLoading.value = false;
-    }
-};
-
-// =========================================================
-// FUNÇÃO DE BUSCA (FETCH) - MENSAGENS (MANTIDA)
-// =========================================================
-const loadMessages = async () => {
-    isMessagesLoading.value = true;
-
-    try {
-        const data = await fetchMessages(); 
-        messages.value = data.reverse(); 
-        // O status principal ainda foca nos contatos, mas o log confirma o fetch das mensagens
-        console.log(`💬 ${data.length} mensagens carregadas em background.`); 
-
-    } catch (error) {
-        console.error('Erro ao carregar mensagens:', error.message);
-    } finally {
-        isMessagesLoading.value = false;
     }
 };
 
@@ -73,9 +49,8 @@ const isRecording = ref(false);
 const hasMicPermission = ref(false);
 
 onMounted(async () => {
-    // Inicializa o fetch dos usuários e mensagens
-    loadUsers(); 
-    loadMessages(); 
+    // Inicializa o fetch dos usuários
+    loadUsers(); // Chama a nova função loadUsers
 
     // Solicita permissão ao microfone
     try {
@@ -128,7 +103,7 @@ const stopRecording = () => {
 <template>
   <div class="ht-app-container">
     <header class="app-header">
-      <h1 class="logo">HT PTT Messenger</h1>
+      <h1 class="logo">Oktok Messenger</h1>
       <div :class="['status-indicator', {'status-success': users.length > 0, 'status-error': fetchStatus.startsWith('ERRO')}]">
         {{ users.length > 0 ? 'ONLINE' : fetchStatus.startsWith('ERRO') ? 'ERRO' : 'BUSCANDO...' }}
       </div>
@@ -139,9 +114,6 @@ const stopRecording = () => {
       <div class="status-box" :class="{'status-box-error': fetchStatus.startsWith('ERRO')}">
         <p class="status-message">
             <strong>Usuário Logado:</strong> {{ users.find(u => u.id === MY_USER_ID.value)?.username || `ID ${MY_USER_ID.value}` }}
-        </p>
-        <p class="status-message">
-            <strong>Destinatário (1-1):</strong> {{ users.find(u => u.id === RECIPIENT_ID.value)?.username || `ID ${RECIPIENT_ID.value}` }}
         </p>
         <p class="status-message-current">{{ fetchStatus }}</p>
       </div>
@@ -191,13 +163,13 @@ const stopRecording = () => {
     </main>
     
     <footer class="app-footer">
-      <p>Desenvolvido para PTT Streaming</p>
+      <p>Desenvolvido para Oktok Streaming</p>
     </footer>
   </div>
 </template>
 
 <style scoped>
-/* ESTILOS ORIGINAIS (SEM OS NOVOS ESTILOS DE CHAT) */
+/* O CSS permanece inalterado */
 :root {
     --color-primary-blue: #007bff;
     --color-secondary-dark: #1e3a8a;
@@ -288,6 +260,9 @@ const stopRecording = () => {
     padding-top: 5px;
     border-top: 1px dashed #c0d8ff;
 }
+/* OBS: A borda superior pode precisar ser ajustada se o item 'Destinatário' for removido. 
+   Como ele já tem 'margin-top' e 'padding-top' isso garante o espaçamento mesmo com apenas 2 itens.
+*/
 
 .ptt-container {
     text-align: center;
