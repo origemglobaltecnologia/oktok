@@ -2,53 +2,46 @@
 import { ref, onMounted } from 'vue';
 
 // =========================================================
-// VARIÁVEIS DE CONFIGURAÇÃO REST
+// IMPORTAÇÃO DO SERVIÇO DE USUÁRIOS
 // =========================================================
-const API_URL = 'http://localhost:8080/users'; 
+import { fetchUsers } from './services/userService'; // Importado
+
+// =========================================================
+// VARIÁVEIS DE CONFIGURAÇÃO E ESTADO
+// =========================================================
 const fetchStatus = ref('Aguardando busca de contatos...');
 const users = ref([]);
 const isUsersLoading = ref(true);
 
-// Mocks de ID mantidos, mas a lista de contatos será dinâmica
 const MY_USER_ID = ref(1); 
 const RECIPIENT_ID = ref(2); 
 
 // =========================================================
-// FUNÇÃO DE BUSCA (FETCH)
+// FUNÇÃO DE BUSCA (FETCH) - UTILIZANDO O SERVIÇO
 // =========================================================
-const fetchUsers = async () => {
+const loadUsers = async () => { // Renomeada para melhor clareza
     isUsersLoading.value = true;
-    fetchStatus.value = `Buscando usuários em ${API_URL}...`;
+    fetchStatus.value = `Buscando usuários...`;
     users.value = []; 
 
     try {
-        const response = await fetch(API_URL);
-
-        if (!response.ok) {
-            fetchStatus.value = `ERRO HTTP: ${response.status}. O servidor Spring está rodando?`;
-            console.error("Erro da API (Status não-OK):", await response.text());
-            return;
-        }
-
-        const data = await response.json();
+        // CHAMA A FUNÇÃO DO SERVIÇO EXTERNO
+        const data = await fetchUsers(); 
         
-        if (Array.isArray(data)) {
-            users.value = data;
-            fetchStatus.value = `Sucesso REST! ${data.length} contatos carregados.`;
-        } else {
-            fetchStatus.value = `Sucesso (200 OK), mas o retorno não é uma lista válida.`;
-        }
+        users.value = data;
+        fetchStatus.value = `Sucesso REST! ${data.length} contatos carregados.`;
 
     } catch (error) {
-        fetchStatus.value = 'ERRO DE CONEXÃO: Servidor 8080 offline ou CORS bloqueado. (F12)';
-        console.error('Erro de Fetch (Rede/CORS):', error);
+        // O App.vue trata a mensagem de erro da camada de serviço
+        fetchStatus.value = error.message; 
+        console.error('Erro de Fetch (Tratado no App.vue):', error.message);
     } finally {
         isUsersLoading.value = false;
     }
 };
 
 // =========================================================
-// ÁUDIO (PTT) - Gravação local via microfone
+// ÁUDIO (PTT) - Gravação local via microfone (Lógica MANTIDA AQUI)
 // =========================================================
 const mediaRecorder = ref(null);
 const audioChunks = ref([]);
@@ -57,7 +50,7 @@ const hasMicPermission = ref(false);
 
 onMounted(async () => {
     // Inicializa o fetch dos usuários
-    fetchUsers();
+    loadUsers(); // Chama a nova função loadUsers
 
     // Solicita permissão ao microfone
     try {
@@ -72,12 +65,12 @@ onMounted(async () => {
             }
         };
 
-        // Quando parar, cria um Blob e toca o áudio gravado
+        // Quando parar, cria um Blob e toca o áudio gravado (Lógica anterior mantida)
         mediaRecorder.value.onstop = () => {
             const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
             const audioUrl = URL.createObjectURL(audioBlob);
             const audio = new Audio(audioUrl);
-            console.log("🎙️ Áudio gravado:", audioBlob);
+            console.log("🎙️ Áudio gravado (Playback local):", audioBlob);
             audio.play();
             audioChunks.value = [];
         };
@@ -120,10 +113,10 @@ const stopRecording = () => {
       
       <div class="status-box" :class="{'status-box-error': fetchStatus.startsWith('ERRO')}">
         <p class="status-message">
-            <strong>Usuário Logado:</strong> {{ users.find(u => u.id === MY_USER_ID)?.username || `ID ${MY_USER_ID}` }}
+            <strong>Usuário Logado:</strong> {{ users.find(u => u.id === MY_USER_ID.value)?.username || `ID ${MY_USER_ID.value}` }}
         </p>
         <p class="status-message">
-            <strong>Destinatário (1-1):</strong> {{ users.find(u => u.id === RECIPIENT_ID)?.username || `ID ${RECIPIENT_ID}` }}
+            <strong>Destinatário (1-1):</strong> {{ users.find(u => u.id === RECIPIENT_ID.value)?.username || `ID ${RECIPIENT_ID.value}` }}
         </p>
         <p class="status-message-current">{{ fetchStatus }}</p>
       </div>
@@ -155,7 +148,7 @@ const stopRecording = () => {
         
         <ul v-else-if="users.length > 0" class="user-ul">
             <li v-for="user in users" :key="user.id" class="user-item">
-              <span class="user-name" :class="{'my-user': user.id === MY_USER_ID, 'recipient-user': user.id === RECIPIENT_ID}">
+              <span class="user-name" :class="{'my-user': user.id === MY_USER_ID.value, 'recipient-user': user.id === RECIPIENT_ID.value}">
                 {{ user.username || 'Usuário Desconhecido' }}
               </span>
               <span class="user-status">ID: {{ user.id }}</span>
@@ -164,7 +157,7 @@ const stopRecording = () => {
         
         <div v-else class="empty-list">
              <p>Nenhum contato encontrado ou erro de conexão. Verifique o status.</p>
-             <button @click="fetchUsers" class="reload-button-inline">
+             <button @click="loadUsers" class="reload-button-inline">
                  Recarregar
              </button>
         </div>
@@ -179,6 +172,7 @@ const stopRecording = () => {
 </template>
 
 <style scoped>
+/* O CSS permanece inalterado */
 :root {
     --color-primary-blue: #007bff;
     --color-secondary-dark: #1e3a8a;
@@ -380,3 +374,4 @@ const stopRecording = () => {
     color: #6c757d;
 }
 </style>
+
