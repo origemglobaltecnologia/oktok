@@ -1,15 +1,9 @@
+// src/services/appSetup.js
 import { ref } from 'vue';
 import { fetchUsers } from './userService';
-import {
-  isRecording,
-  hasMicPermission,
-  initializeAudioRecording,
-  startRecording,
-  stopRecording
-} from './ht-messagesService';
 
 // =========================================================
-// VARIÁVEIS REATIVAS GLOBAIS
+// VARIÁVEIS GLOBAIS REATIVAS
 // =========================================================
 export const fetchStatus = ref('Aguardando busca de contatos...');
 export const users = ref([]);
@@ -19,7 +13,7 @@ export const MY_USER_ID = ref(1);
 export const RECIPIENT_ID = ref(2);
 
 // =========================================================
-// FUNÇÃO DE BUSCA DE USUÁRIOS
+// FUNÇÃO PRINCIPAL DE BUSCA DE USUÁRIOS
 // =========================================================
 export const loadUsers = async () => {
   isUsersLoading.value = true;
@@ -36,15 +30,4 @@ export const loadUsers = async () => {
   } finally {
     isUsersLoading.value = false;
   }
-};
-
-// =========================================================
-// EXPORTA FUNÇÕES DE ÁUDIO (Reexporta para o App.vue)
-// =========================================================
-export {
-  isRecording,
-  hasMicPermission,
-  initializeAudioRecording,
-  startRecording,
-  stopRecording
 };
