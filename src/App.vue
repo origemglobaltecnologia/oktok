@@ -21,12 +21,22 @@ import {
   stopRecording
 } from './services/ht-messagesService';
 
+import { testHtConnection } from './services/htConnectionService'; // ✅ NOVO SERVIÇO
+
+// =========================================================
+// VARIÁVEIS DE ESTADO
+// =========================================================
+const htStatus = ref('Verificando conexão HT...');
+
 // =========================================================
 // CICLO DE VIDA
 // =========================================================
-onMounted(() => {
+onMounted(async () => {
   loadUsers();
   initializeAudioRecording();
+
+  // ✅ Testar conexão com a API HT Messages
+  htStatus.value = await testHtConnection();
 });
 </script>
 
@@ -55,6 +65,11 @@ onMounted(() => {
           {{ users.find(u => u.id === MY_USER_ID.value)?.username || `ID ${MY_USER_ID.value}` }}
         </p>
         <p class="status-message-current">{{ fetchStatus }}</p>
+      </div>
+
+      <!-- ✅ STATUS HT MESSAGES -->
+      <div class="status-box ht-status-box">
+        <p><strong>Status HT Messages:</strong> {{ htStatus }}</p>
       </div>
 
       <!-- BOTÃO PTT -->
@@ -114,3 +129,13 @@ onMounted(() => {
 </template>
 
 <style scoped src="./assets/appStyles.css"></style>
+
+<style scoped>
+.ht-status-box {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #eef3f7;
+  font-size: 0.95rem;
+}
+</style>
