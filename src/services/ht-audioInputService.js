@@ -1,7 +1,8 @@
 // src/services/ht-audioInputService.js
-import { mediaRecorder, isRecording, hasMicPermission } from './ht-messagesService';
-import { playRecordedAudio } from './ht-audioOutputService';
-
+                         
+import { mediaRecorder, isRecording, hasMicPermission } from './ht-messagesService';            
+import { routeAudioMessage } from './ht-messagesRouter'; // <-- NOVO IMPORTADO
+                                    
 const audioChunks = [];
 
 // =========================================================
@@ -19,9 +20,12 @@ export const initializeAudioRecording = async () => {
 
     mediaRecorder.value.onstop = () => {
       const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-      playRecordedAudio(audioBlob);
+      
+      // CHAMADA ATUALIZADA: Envia o Blob para o router, que fará o playback
+      routeAudioMessage(audioBlob); 
+
       audioChunks.length = 0;
-      console.log('🎙️ Áudio gravado (Playback local):', audioBlob);
+      console.log('🎙️ Áudio gravado (Blob criado, enviado para Router):', audioBlob); // Log ajustado
     };
 
     return true;
@@ -51,3 +55,4 @@ export const stopRecording = () => {
     console.log('🟢 Gravação finalizada.');
   }
 };
+
